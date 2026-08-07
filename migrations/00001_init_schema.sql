@@ -2,7 +2,7 @@
 
 CREATE TYPE rarity AS ENUM ('ordinary','unusual','rare','very rare','legendary');
 
-CREATE TYPE statuses AS ENUM ('dist','lim','new','reg','alc');
+CREATE TYPE statuses AS ENUM ('disc','lim','new','reg','alc','current');
 
 CREATE TABLE flavors
 (flavor_id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -13,7 +13,8 @@ rare rarity NOT NULL,
 region varchar(50) NOT NULL,
 color varchar(10) NOT NULL,
 status statuses NOT NULL,
-photo text
+photo text,
+UNIQUE(title)
 );
 
 CREATE TABLE users
