@@ -1,0 +1,10 @@
+@url= http://localhost:8080
+
+###Проверка жизни
+GET {{url}}/health
+
+### Список всех вкусов
+GET {{url}}/api/v1/flavors
+
+### Вкусы с фильтром по линейке
+GET {{url}}/api/v1/flavors?lineup=Ultra
