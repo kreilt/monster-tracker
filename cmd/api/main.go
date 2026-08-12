@@ -8,9 +8,10 @@ import (
 	"os"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/kreilt/monster-tracker/internal/repository"
 )
 
-func handler(pool *pgxpool.Pool) http.HandlerFunc {
+func healthHandler(pool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if err := pool.Ping(r.Context()); err != nil {
@@ -26,6 +27,23 @@ func handler(pool *pgxpool.Pool) http.HandlerFunc {
 			map[string]string{
 				"status": "ok",
 				"db":     "connected"})
+	}
+}
+
+func flavorsHandler(flavorsRepo *repository.FlavorRepository) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		flavors, err := flavorsRepo.GetAll(r.Context())
+		if err != nil {
+			log.Printf("failed to get flavors, %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			_ = json.NewEncoder(w).Encode(
+				map[string]string{
+					"error": "internal"})
+			return
+		}
+		_ = json.NewEncoder(w).Encode(flavors)
 	}
 }
 
@@ -48,7 +66,10 @@ func main() {
 		log.Fatalf("unable to reach database: %v", err)
 	}
 
-	http.HandleFunc("/health", handler(pool))
+	flavorsRepo := repository.NewFlavorRepository(pool)
+
+	http.HandleFunc("/health", healthHandler(pool))
+	http.HandleFunc("GET /api/v1/flavors", flavorsHandler(flavorsRepo))
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		log.Fatalf("server failed: %v", err)
 	}
