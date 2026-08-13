@@ -6,6 +6,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kreilt/monster-tracker/internal/repository"
@@ -30,7 +33,7 @@ func healthHandler(pool *pgxpool.Pool) http.HandlerFunc {
 	}
 }
 
-func flavorsHandler(flavorsRepo *repository.FlavorRepository) http.HandlerFunc {
+func flavorsHandler(flavorsRepo *repository.Flavor) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
@@ -53,24 +56,51 @@ func main() {
 		log.Fatal("MONSTER_DB is not set")
 	}
 
-	ctx := context.Background()
+	startCtx := context.Background()
 
-	pool, err := pgxpool.New(ctx, dbURL)
+	pool, err := pgxpool.New(startCtx, dbURL)
 	if err != nil {
 		log.Fatalf("unable to create pool: %v", err)
 	}
 
 	defer pool.Close()
 
-	if err := pool.Ping(ctx); err != nil {
+	if err := pool.Ping(startCtx); err != nil {
 		log.Fatalf("unable to reach database: %v", err)
 	}
 
-	flavorsRepo := repository.NewFlavorRepository(pool)
+	flavorsRepo := repository.NewFlavor(pool)
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /health", healthHandler(pool))
+	mux.HandleFunc("GET /api/v1/flavors", flavorsHandler(flavorsRepo))
 
-	http.HandleFunc("/health", healthHandler(pool))
-	http.HandleFunc("GET /api/v1/flavors", flavorsHandler(flavorsRepo))
-	if err := http.ListenAndServe(":8080", nil); err != nil {
-		log.Fatalf("server failed: %v", err)
+	srv := &http.Server{
+		Addr:              ":8080",
+		Handler:           mux,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
+
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("server failed: %v", err)
+		}
+	}()
+
+	log.Println("server started on :8080")
+
+	<-ctx.Done()
+	log.Println("shutdown")
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
+
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Printf("shutdown error: %v", err)
 	}
 }
