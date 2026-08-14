@@ -17,8 +17,11 @@ func NewFlavor(pool *pgxpool.Pool) *Flavor {
 	}
 }
 
-func (r *Flavor) GetAll(ctx context.Context) ([]model.Flavor, error) {
-	rows, err := r.pool.Query(ctx, `SELECT flavor_id, title, lineup, description, rare, region, color, status, photo FROM flavors ORDER BY flavor_id`)
+func (r *Flavor) GetAll(ctx context.Context, lineup string) ([]model.Flavor, error) {
+	rows, err := r.pool.Query(ctx, `SELECT flavor_id, title, lineup, description, rare, region, color, status, photo 
+									FROM flavors 
+									WHERE $1= '' OR lineup = $1
+									ORDER BY flavor_id`, lineup)
 	if err != nil {
 		return nil, err
 	}

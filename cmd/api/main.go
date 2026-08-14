@@ -37,7 +37,8 @@ func flavorsHandler(flavorsRepo *repository.Flavor) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		flavors, err := flavorsRepo.GetAll(r.Context())
+		lineup := r.URL.Query().Get("lineup")
+		flavors, err := flavorsRepo.GetAll(r.Context(), lineup)
 		if err != nil {
 			log.Printf("failed to get flavors, %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -70,6 +71,7 @@ func main() {
 	}
 
 	flavorsRepo := repository.NewFlavor(pool)
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler(pool))
 	mux.HandleFunc("GET /api/v1/flavors", flavorsHandler(flavorsRepo))
