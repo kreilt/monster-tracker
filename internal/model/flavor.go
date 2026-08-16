@@ -19,6 +19,22 @@ const (
 	StatusesCurrent Statuses = "current"
 )
 
+func IsValidRarity(s string) bool {
+	switch Rarity(s) {
+	case RarityOrdinary, RarityUnusual, RarityRare, RarityVeryRare, RarityLegendary:
+		return true
+	}
+	return false
+}
+
+func IsValidStatuses(s string) bool {
+	switch Statuses(s) {
+	case StatusesDisc, StatusesLim, StatusesNew, StatusesReg, StatusesAlc, StatusesCurrent:
+		return true
+	}
+	return false
+}
+
 type Flavor struct {
 	FlavorID    int      `json:"flavor_id"`
 	Title       string   `json:"title"`

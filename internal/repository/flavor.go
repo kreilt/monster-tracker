@@ -17,11 +17,15 @@ func NewFlavor(pool *pgxpool.Pool) *Flavor {
 	}
 }
 
-func (r *Flavor) GetAll(ctx context.Context, lineup string) ([]model.Flavor, error) {
+func (r *Flavor) List(ctx context.Context, filters FlavorFilter) ([]model.Flavor, error) {
 	rows, err := r.pool.Query(ctx, `SELECT flavor_id, title, lineup, description, rare, region, color, status, photo 
 									FROM flavors 
-									WHERE $1= '' OR lineup = $1
-									ORDER BY flavor_id`, lineup)
+									WHERE ($1 = '' OR title ILIKE '%' || $1 || '%' OR description ILIKE '%' || $1 || '%')
+									AND ($2 = '' OR lineup = $2)
+									AND ($3 = '' OR rare::text = $3)
+									AND ($4 = '' OR region = $4)
+									AND ($5 = '' OR status::text = $5)
+									ORDER BY flavor_id`, filters.Search, filters.Lineup, filters.Rare, filters.Region, filters.Status)
 	if err != nil {
 		return nil, err
 	}

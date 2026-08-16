@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/kreilt/monster-tracker/internal/model"
 	"github.com/kreilt/monster-tracker/internal/repository"
 )
 
@@ -37,8 +38,37 @@ func flavorsHandler(flavorsRepo *repository.Flavor) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
+		search := r.URL.Query().Get("search")
 		lineup := r.URL.Query().Get("lineup")
-		flavors, err := flavorsRepo.GetAll(r.Context(), lineup)
+		rare := r.URL.Query().Get("rare")
+		region := r.URL.Query().Get("region")
+		status := r.URL.Query().Get("status")
+
+		if rare != "" && !model.IsValidRarity(rare) {
+			w.WriteHeader(http.StatusBadRequest)
+			_ = json.NewEncoder(w).Encode(
+				map[string]string{
+					"error": "invalid rare value"})
+			return
+		}
+
+		if status != "" && !model.IsValidStatuses(status) {
+			w.WriteHeader(http.StatusBadRequest)
+			_ = json.NewEncoder(w).Encode(
+				map[string]string{
+					"error": "invalid status value"})
+			return
+		}
+
+		flavorsFilter := repository.FlavorFilter{
+			Search: search,
+			Lineup: lineup,
+			Rare:   rare,
+			Region: region,
+			Status: status,
+		}
+
+		flavors, err := flavorsRepo.List(r.Context(), flavorsFilter)
 		if err != nil {
 			log.Printf("failed to get flavors, %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
