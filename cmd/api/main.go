@@ -50,9 +50,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("error getting Auth client: %v", err)
 	}
-	_ = client
 
 	flavorsRepo := repository.NewFlavor(pool)
+	userRepo := repository.NewUser(pool)
+
+	withAuth := handlers.Auth(client, userRepo)
+	_ = withAuth
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", handlers.Health(pool))
